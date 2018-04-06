@@ -105,7 +105,7 @@ function onListening() {
 
 function setWebhook(duration) {
   let body = {
-    'hub.callback': process.env.omnic_twitch_webhook_url,
+    'hub.callback': process.env.omnic_twitch_webhook_url + '/twitch/webhook',
     'hub.mode': 'subscribe',
     'hub.topic': 'https://api.twitch.tv/helix/streams?user_id=',
     'hub.lease_seconds': duration
