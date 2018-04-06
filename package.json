@@ -5,6 +5,7 @@
   "license": "MIT",
   "scripts": {
     "lint": "eslint *.js",
+    "start": "babel-node webhook.js",
     "test": "mocha --require babel-core/register --require babel-polyfill --exit test.spec.js"
   },
   "dependencies": {
