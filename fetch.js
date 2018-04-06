@@ -107,7 +107,7 @@ class Fetcher {
     const series = result[0].series
     let sql = 'insert into `score`(`series`, `rank`, `kills`, type`, `streamer_id`) value(?, ?, ?, ?, ?)'
     sql = mysql.format(sql, [series, data.rank, data.kills, data.type, this.nickname])
-    const inserted = await this.db.query(sql)
+    await this.db.query(sql)
   }
 
   async getRank(telemetry) {
