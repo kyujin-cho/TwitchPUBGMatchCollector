@@ -3,6 +3,9 @@ node_js:
   - "node"
   - "8"
 
+before_install:
+  - yarn global add mocha
+
 scripts:
   - npm run lint
   - npm test
