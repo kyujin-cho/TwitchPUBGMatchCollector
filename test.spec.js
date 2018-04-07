@@ -3,7 +3,6 @@ const axios = require('axios')
 const Fetcher = require('./fetch').default
 const fs = require('fs')
 const mysql = require('mysql')
-const webhook = require('./webhook')
 
 let fetcher = new Fetcher()
 
@@ -287,5 +286,5 @@ describe('Twitch webhook test', function() {
         done(err)
       }) 
   })
-  
+
 })
