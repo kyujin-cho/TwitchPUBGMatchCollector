@@ -26,7 +26,8 @@ describe('Authentication information test', function() {
         done()
       })
   })
-  it.skip('Should connect to database successfully with given informations', function(done) { 
+  it('Should connect to database successfully with given informations', function(done) { 
+    this.timeout(10000)
     const db = mysql.createConnection({
       host: process.env.omnic_db_host,
       port: 3306,
@@ -82,7 +83,7 @@ describe('Real game data fetch test', function() {
         .catch(err => done(err))
     })
     it('Should fetch valid telemetry data from game data', function(done) { 
-      this.timeout(5000)
+      this.timeout(10000)
       fetcher.getTelemetryAsset(datas.match)
         .then(data => {
           assert.equal('match.bro.official.2018-04.krjp.squad.2018.04.01.438031fe-6ff9-4b6a-b0ea-37eb4eac5ae5', data[0].MatchId)
