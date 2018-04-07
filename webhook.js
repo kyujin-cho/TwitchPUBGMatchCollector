@@ -98,7 +98,6 @@ function onListening() {
     ? 'pipe ' + addr
     : 'port ' + addr.port
   debug('Listening on ' + bind)
-  axios.post()
   setWebhook(86400)
   setInterval(() => setWebhook(86400), 86400)
 }
