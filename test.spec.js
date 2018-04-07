@@ -26,7 +26,7 @@ describe('Authentication information test', function() {
         done()
       })
   })
-  it('Should connect to database successfully with given informations', function(done) { 
+  it.skip('Should connect to database successfully with given informations', function(done) { 
     const db = mysql.createConnection({
       host: process.env.omnic_db_host,
       port: 3306,
