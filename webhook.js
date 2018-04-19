@@ -5,10 +5,11 @@ import koaJson from 'koa-json'
 import koaError from 'koa-onerror'
 import koaLogger from 'koa-logger'
 import koaRouter from 'koa-router'
-import debug from 'debug'
 import axios from 'axios'
 import Twitch from 'twitch-js'
-import fetcher from './fetch'
+import Fetcher from './fetch'
+
+const debug = require('debug')('http')
 
 const options = {
   options: {
@@ -23,6 +24,8 @@ const options = {
 
 const app = new koa()
 const router = new koaRouter()
+const fetch = new Fetcher()
+
 koaError(app)
 
 const client = new Twitch.client(options)
@@ -43,27 +46,30 @@ app.use(async (ctx, next) => {
 
 
 client.on('chat', (channel, userstate, message, self) => {
-  if(self || userstate['name'] != process.env.omnic_streamer_nickname) return
-  if(message.trim().indexOf('!!setServer ') != 0) {
-    fetcher.emit('serverChange', message.trim().replace('!!setServer ').split(' ')[0])
+  if(self || (process.argv.indexOf(userstate.username) == -1 && userstate.username != process.env.omnic_streamer_nickname)) return
+  if(message.trim().indexOf('!!setServer ') == 0) {
+    console.log(`Changing server to [${message.trim().replace('!!setServer ', '').split(' ')[0]}]`)
+    fetch.emit('serverChange', message.trim().replace('!!setServer ', '').split(' ')[0])
   }
 })
 
 router.get('/twitch/webhook', async (ctx, next) => {
-  if(ctx.params['hub.mode'] == 'subscribe') {
-    ctx.body = ctx.params['hub.challenge']
-  } else if(ctx.params['hub.mode'] == 'denied') {
-    ctx.body = ''
+  console.log(ctx.query)
+  if(ctx.query['hub.mode'] == 'subscribe') {
+    ctx.response.body = ctx.query['hub.challenge']
+  } else if(ctx.query['hub.mode'] == 'denied') {
+    ctx.response.body = ''
   }
 })
 
 router.post('/twitch/webhook', async (ctx, next) => {
-  if(ctx.body.data) {
-    fetcher.emit('streamOn', ctx.body.data[0].game_id)
+  if(ctx.request.body.data && ctx.request.body.data.length > 0) {
+    console.log(ctx.request.body)
+    fetch.emit('streamOn', ctx.request.body.data[0].game_id)
   } else {
-    fetcher.emit('streamDown')
+    fetch.emit('streamDown')
   }
-  ctx.body = ''
+  ctx.response.body = ''
 })
 
 app.use(router.routes(), router.allowedMethods())
@@ -99,12 +105,16 @@ function onListening() {
     : 'port ' + addr.port
   debug('Listening on ' + bind)
   setWebhook(86400)
-  setInterval(() => setWebhook(86400), 86400)
+  setInterval(() => setWebhook(86400), 86400 * 1000)
+  client.connect()
+    .then(() => {
+      debug('TMI now listening')
+    })
 }
 
 function setWebhook(duration) {
   let body = {
-    'hub.callback': process.env.omnic_twitch_webhook_url + '/twitch/webhook',
+    'hub.callback': process.env.omnic_twitch_webhook_url + ':3000/twitch/webhook',
     'hub.mode': 'subscribe',
     'hub.topic': 'https://api.twitch.tv/helix/streams?user_id=',
     'hub.lease_seconds': duration
@@ -124,7 +134,8 @@ function setWebhook(duration) {
       })
     })
     .then(data => {
-      console.log('Registered webhook')
+      console.log('Registered webhook to ' + body['hub.callback'])
+      console.log(data.data)
     })
 }
 

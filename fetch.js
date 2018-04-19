@@ -27,7 +27,15 @@ class Fetcher {
       database: process.env.omnic_db
     })
 
-    this.eventEmitter.on('streamOn', this.validateGameStart)
+    this.eventEmitter.on('streamOn', (gameId) => { 
+      this.validateGameStart(gameId)
+        .then(() => {
+          console.log('Stream started!')
+        })
+        .catch(e => {
+          console.log(e)
+        })
+    } )
     this.eventEmitter.on('streamDown', () => {
       this.interrupt = true
     })
@@ -35,10 +43,12 @@ class Fetcher {
       if(this.interrupt) return
       this.retrieveDataFromServer(counter == this.servers.length ? 0 : counter+1)
     })
-    this.eventEmitter.on('serverChange', (server) => { 
+    this.eventEmitter.on('serverChange', (server) => {
+      console.log(`${server}, [${this.servers}] => ${this.servers.indexOf(server)}`)
       if(this.servers.indexOf(server) == -1) return
       this.currentServer = server
       this.serverChanged = true
+      console.log(`Server changed to ${server}`)
     })
 
     this.emit = this.eventEmitter.emit
@@ -46,7 +56,7 @@ class Fetcher {
 
   validateGameStart(gameId) {
     return new Promise((resolve, reject) => {
-      if(gameId == 403957) {
+      if(gameId == 493057) {
         this.retrieveDataFromServer(0)
         resolve()
       } else {
