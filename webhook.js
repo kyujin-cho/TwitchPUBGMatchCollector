@@ -6,29 +6,29 @@ import koaError from 'koa-onerror'
 import koaLogger from 'koa-logger'
 import koaRouter from 'koa-router'
 import axios from 'axios'
-import Twitch from 'twitch-js'
-import Fetcher from './fetch'
+import ipc from 'node-ipc'
 
 const debug = require('debug')('http')
 
-const options = {
-  options: {
-    debug: true
-  },
-  connection: {
-    reconnect: true,
-    secure: true
-  },
-  channels: ['#' + process.env.omnic_streamer_nickname]
-}
+ipc.config.id = 'pubg-webhook'
+ipc.config.retry = 1500
 
 const app = new koa()
 const router = new koaRouter()
-const fetch = new Fetcher()
 
 koaError(app)
 
-const client = new Twitch.client(options)
+ipc.connectTo('pubg-fetcher', () => {
+  ipc.of['pubg-fetcher'].on('connect', () => {
+    ipc.log('## connected to pubg-fetcher ##', ipc.config.delay)
+  })
+  ipc.of['pubg-fetcher'].on('disconnect', () => {
+    ipc.log('Disconnected from pubg-fetcher')
+  })
+  ipc.of['pubg-fetcher'].on('result', (data) => {
+    console.log('Fetcher start result: ' + data)
+  })
+})
 
 app.use(koaBody({
   enableTypes: ['json', 'form', 'text']
@@ -45,13 +45,6 @@ app.use(async (ctx, next) => {
 })
 
 
-client.on('chat', (channel, userstate, message, self) => {
-  if(self || (process.argv.indexOf(userstate.username) == -1 && userstate.username != process.env.omnic_streamer_nickname)) return
-  if(message.trim().indexOf('!!setServer ') == 0) {
-    console.log(`Changing server to [${message.trim().replace('!!setServer ', '').split(' ')[0]}]`)
-    fetch.emit('serverChange', message.trim().replace('!!setServer ', '').split(' ')[0])
-  }
-})
 
 router.get('/twitch/webhook', async (ctx, next) => {
   console.log(ctx.query)
@@ -65,9 +58,9 @@ router.get('/twitch/webhook', async (ctx, next) => {
 router.post('/twitch/webhook', async (ctx, next) => {
   if(ctx.request.body.data && ctx.request.body.data.length > 0) {
     console.log(ctx.request.body)
-    fetch.emit('streamOn', ctx.request.body.data[0].game_id)
+    ipc.of['pubg-fetcher'].emit('streamOn', ctx.request.body.data[0].game_id)
   } else {
-    fetch.emit('streamDown')
+    ipc.of['pubg-fetcher'].emit('streamDown')
   }
   ctx.response.body = ''
 })
@@ -106,10 +99,6 @@ function onListening() {
   debug('Listening on ' + bind)
   setWebhook(86400)
   setInterval(() => setWebhook(86400), 86400 * 1000)
-  client.connect()
-    .then(() => {
-      debug('TMI now listening')
-    })
 }
 
 function setWebhook(duration) {
@@ -119,6 +108,7 @@ function setWebhook(duration) {
     'hub.topic': 'https://api.twitch.tv/helix/streams?user_id=',
     'hub.lease_seconds': duration
   }
+  let userID
   const headers = {
     'Client-ID': process.env.omnic_twitch_client_id,
     'Content-Type': 'application/json'
@@ -127,7 +117,7 @@ function setWebhook(duration) {
     headers: headers
   })
     .then(data => {
-      const userID = data.data.data[0].id
+      userID = data.data.data[0].id
       body['hub.topic'] += userID
       return axios.post('https://api.twitch.tv/helix/webhooks/hub', body, {
         headers: headers
@@ -136,6 +126,17 @@ function setWebhook(duration) {
     .then(data => {
       console.log('Registered webhook to ' + body['hub.callback'])
       console.log(data.data)
+      return axios.get('https://api.twitch.tv/helix/streams?user_id=' + userID, {
+        headers: headers
+      })
+    })
+    .then(response => {
+      console.log(response.data)
+      if(response.data.data.length > 0) {
+        ipc.of['pubg-fetcher'].emit('streamOn', response.data.data[0].game_id)    
+      } else {
+        ipc.of['pubg-fetcher'].emit('streamDown')
+      }
     })
 }
 

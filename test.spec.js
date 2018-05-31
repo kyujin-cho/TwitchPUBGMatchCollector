@@ -73,15 +73,6 @@ describe('Real game data fetch test', function() {
           done()
         }).catch(err => done(err))
     })
-    it('Should fetch game data from PUBG API', function(done) { 
-      this.timeout(5000)
-      fetcher.getGame('438031fe-6ff9-4b6a-b0ea-37eb4eac5ae5', 'pc-krjp')
-        .then(game => {
-          assert.equal('438031fe-6ff9-4b6a-b0ea-37eb4eac5ae5', game.data.id)
-          done()
-        })
-        .catch(err => done(err))
-    })
     it('Should fetch valid telemetry data from game data', function(done) { 
       this.timeout(10000)
       fetcher.getTelemetryAsset(datas.match)
